@@ -4,21 +4,26 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"syscall"
+
+	"../../cgroups"
 )
 
 type cpuGroup struct {
 }
 
-func (s *cpuGroup) Stats(d *data) (map[string]float64, error) {
-	paramData := make(map[string]float64)
+func (s *cpuGroup) GetStats(d *data, stats *cgroups.Stats) error {
 	path, err := d.path("cpu")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	f, err := os.Open(filepath.Join(path, "cpu.stat"))
 	if err != nil {
-		return nil, err
+		if pathErr, ok := err.(*os.PathError); ok && pathErr.Err == syscall.ENOENT {
+			return nil
+		}
+		return err
 	}
 	defer f.Close()
 
@@ -26,9 +31,18 @@ func (s *cpuGroup) Stats(d *data) (map[string]float64, error) {
 	for sc.Scan() {
 		t, v, err := getCgroupParamKeyValue(sc.Text())
 		if err != nil {
-			return nil, err
+			return err
 		}
-		paramData[t] = v
+		switch t {
+		case "nr_periods":
+			stats.CpuStats.ThrottlingData.Periods = v
+
+		case "nr_throttled":
+			stats.CpuStats.ThrottlingData.ThrottledPeriods = v
+
+		case "throttled_time":
+			stats.CpuStats.ThrottlingData.ThrottledTime = v
+		}
 	}
-	return paramData, nil
+	return nil
 }

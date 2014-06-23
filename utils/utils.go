@@ -12,16 +12,15 @@ import (
 	"strconv"
 	"strings"
 
+	"../cgroups"
+	"../cgroups/fs"
 	"github.com/dotcloud/docker/pkg/system"
-
-	"github.com/maebashi/docker-metricsd/cgroups"
-	"github.com/maebashi/docker-metricsd/cgroups/fs"
 )
 
 var devDir string = ""
 var parentName string = ""
 
-func GetCgroupStats(id, subsystem string) (m map[string]float64, err error) {
+func GetCgroupStats(id string) (m *cgroups.Stats, err error) {
 	if id, err = getLongID(id); err != nil {
 		return
 	}
@@ -29,7 +28,7 @@ func GetCgroupStats(id, subsystem string) (m map[string]float64, err error) {
 		Parent: parentName,
 		Name:   id,
 	}
-	return fs.GetStats(&c, subsystem, 1)
+	return fs.GetStats(&c)
 }
 
 func getLongID(shortID string) (longID string, err error) {

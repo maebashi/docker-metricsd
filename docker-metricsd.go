@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/maebashi/docker-metricsd/utils"
+	"./utils"
 )
 
 func main() {
@@ -76,13 +76,22 @@ func handleContainersByName(p *httputil.ReverseProxy, w http.ResponseWriter, r *
 
 	metrics := map[string]interface{}{}
 
-	var m map[string]float64
-	for _, subsystem := range []string{"memory", "cpuacct"} {
-		if m, err = utils.GetCgroupStats(a[2], subsystem); err != nil {
-			continue
-		}
-		metrics[subsystem] = m
+	c, err := utils.GetCgroupStats(a[2])
+	if err != nil {
+		return
 	}
+	metrics["memory"] = c.MemoryStats
+	metrics["cpuacct"] = c.CpuStats
+	metrics["blkio"] = c.BlkioStats
+
+	/*
+		var m map[string]float64
+		for _, subsystem := range []string{"memory", "cpuacct"} {
+			if m, err = utils.GetCgroupStats(a[2], subsystem); err != nil {
+				continue
+			}
+			metrics[subsystem] = m
+		}*/
 
 	err = utils.NetNsSynchronize(pid, func() (err error) {
 		ifstats, err := utils.GetIfStats()

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/maebashi/docker-metricsd/cgroups"
+	"../../cgroups"
 )
 
 var (
@@ -21,7 +21,9 @@ var (
 )
 
 type subsystem interface {
-	Stats(*data) (map[string]float64, error)
+	//Set(*data) error
+	//Remove(*data) error
+	GetStats(*data, *cgroups.Stats) error
 }
 
 type data struct {
@@ -31,7 +33,26 @@ type data struct {
 	pid    int
 }
 
-func GetStats(c *cgroups.Cgroup, subsystem string, pid int) (map[string]float64, error) {
+func GetStats(c *cgroups.Cgroup) (*cgroups.Stats, error) {
+	stats := cgroups.NewStats()
+
+	d, err := getCgroupData(c, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, sys := range subsystems {
+		if err := sys.GetStats(d, stats); err != nil {
+			//return nil, err
+			continue
+		}
+	}
+
+	return stats, nil
+}
+
+func getCgroupData(c *cgroups.Cgroup, pid int) (*data, error) {
+	// we can pick any subsystem to find the root
 	cgroupRoot, err := cgroups.FindCgroupMountpoint("cpu")
 	if err != nil {
 		return nil, err
@@ -47,25 +68,28 @@ func GetStats(c *cgroups.Cgroup, subsystem string, pid int) (map[string]float64,
 		cgroup = filepath.Join(c.Parent, cgroup)
 	}
 
-	d := &data{
+	return &data{
 		root:   cgroupRoot,
 		cgroup: cgroup,
 		c:      c,
 		pid:    pid,
-	}
-	sys, exists := subsystems[subsystem]
-	if !exists {
-		return nil, fmt.Errorf("subsystem %s does not exist", subsystem)
-	}
-	return sys.Stats(d)
+	}, nil
 }
 
-func (raw *data) path(subsystem string) (string, error) {
+func (raw *data) parent(subsystem string) (string, error) {
 	initPath, err := cgroups.GetInitCgroupDir(subsystem)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(raw.root, subsystem, initPath, raw.cgroup), nil
+	return filepath.Join(raw.root, subsystem, initPath), nil
+}
+
+func (raw *data) path(subsystem string) (string, error) {
+	parent, err := raw.parent(subsystem)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(parent, raw.cgroup), nil
 }
 
 func (raw *data) join(subsystem string) (string, error) {
