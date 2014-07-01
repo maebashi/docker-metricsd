@@ -1,0 +1,10 @@
+#!/bin/sh
+if mountpoint -q /target; then
+	echo "Installing docker-metricsd to /target"
+	cp /docker-metricsd /target
+else
+	echo "/target is not a mountpoint."
+	echo "You can either:"
+	echo "- re-run this container with -v /usr/local/bin:/target"
+	echo "- extract the docker-metricsd binary (located at /docker-metricsd)"
+fi
