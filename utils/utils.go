@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"strings"
 
-	"../cgroups"
-	"../cgroups/fs"
-	"github.com/dotcloud/docker/pkg/system"
+	"github.com/docker/libcontainer/cgroups"
+	"github.com/docker/libcontainer/cgroups/fs"
+	"github.com/docker/libcontainer/system"
 )
 
 var devDir string = ""
