@@ -24,11 +24,12 @@ func GetCgroupStats(id string) (m *cgroups.Stats, err error) {
 	if id, err = getLongID(id); err != nil {
 		return
 	}
-	c := cgroups.Cgroup{
-		Parent: parentName,
-		Name:   id,
+	mnt, _ := cgroups.GetCgroupMounts()
+	paths := make(map[string]string)
+	for _, v := range mnt {
+		paths[v.Subsystems[0]] = filepath.Join(v.Mountpoint, parentName, id)
 	}
-	return fs.GetStats(&c)
+	return fs.GetStats(paths)
 }
 
 func getLongID(shortID string) (longID string, err error) {
